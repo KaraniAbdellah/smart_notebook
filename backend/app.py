@@ -13,8 +13,6 @@ import tempfile
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-import chromadb
-from chromadb.utils import embedding_functions
 from dotenv import dotenv_values
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import JSONResponse
@@ -42,21 +40,7 @@ GROQ_API_KEY = config.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY", ""))
 if not GROQ_API_KEY:
     raise RuntimeError("GROQ_API_KEY is missing. Add it to your .env file.")
 
-# ---------------------------------------------------------------------------
-# ChromaDB — shared persistent client
-# ---------------------------------------------------------------------------
 
-chroma_client = chromadb.PersistentClient(path="chroma_store")
-embedding_fn = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name="all-MiniLM-L6-v2"
-)
-
-def get_collection(name: str = "rag_default"):
-    """Get or create a named ChromaDB collection."""
-    return chroma_client.get_or_create_collection(
-        name=name,
-        embedding_function=embedding_fn,
-    )
 
 # In-memory store for chunked documents per collection
 # { collection_name: list[dict] }
@@ -87,7 +71,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["https://smart-notebook-chi.vercel.app/notebook", "https://smart-notebook-chi.vercel.app/*", ""],
     allow_methods=["*"],
     allow_headers=["*"],
 )
