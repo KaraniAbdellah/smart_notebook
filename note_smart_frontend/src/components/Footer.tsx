@@ -3,71 +3,101 @@ import { HiArrowUpRight } from "react-icons/hi2";
 
 const Footer = () => {
   return (
-    <footer className="border-t border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-950 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        {/* Top row: Brand & Socials */}
-        <div className="flex flex-col items-center md:items-start md:flex-row justify-between gap-10">
-          {/* Brand Section */}
-          <div className="flex flex-col gap-4 max-w-sm text-center md:text-left">
-            <div className="flex items-center justify-center md:justify-start gap-2.5 group cursor-default">
-              {/* Consistent Logo Animation */}
-              <div className="relative flex items-center justify-center w-9 h-9 overflow-hidden rounded-full bg-neutral-900 dark:bg-white shadow-sm transition-transform group-hover:scale-105">
-                <div className="w-4 h-4 border-2 border-white dark:border-neutral-900 rounded-full border-t-transparent animate-[spin_4s_linear_infinite]" />
+    <footer className="relative bg-white border-t-2 border-black overflow-hidden">
+
+      {/* grid background */}
+      <div className="absolute inset-0 opacity-[0.05] bg-[linear-gradient(#000_1px,transparent_1px),linear-gradient(90deg,#000_1px,transparent_1px)] bg-[size:20px_20px]" />
+
+      <div className="relative max-w-6xl mx-auto px-6 py-16">
+
+        {/* TOP SECTION */}
+        <div className="flex flex-col md:flex-row justify-between gap-12">
+
+          {/* BRAND CARD */}
+          <div className="relative border-2 border-black p-6 shadow-[8px_8px_0_#000] max-w-md">
+
+            {/* stamp */}
+            <div className="absolute -top-4 -right-4 border-2 border-black bg-white px-3 py-1 text-xs font-black rotate-6">
+              AI TOOL
+            </div>
+
+            {/* logo */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 border-2 border-black bg-black text-white flex items-center justify-center rotate-3">
+                <div className="w-3 h-3 border border-white rounded-full" />
               </div>
-              <span className="text-lg font-bold tracking-tight text-neutral-900 dark:text-white">
+
+              <span className="font-black tracking-tight">
                 Smart Notebook
               </span>
             </div>
-            <p className="text-sm text-neutral-500 dark:text-neutral-400 leading-relaxed">
-              Your AI-powered research and thinking partner, grounded in the
-              information you trust.
+
+            <p className="text-sm text-black/70 leading-relaxed">
+              Your AI-powered research system grounded in real documents.
+              Built for clarity, speed, and verifiable answers.
             </p>
 
-            {/* Social Icons */}
-            <div className="flex items-center justify-center md:justify-start gap-2 pt-1">
+            {/* SOCIALS */}
+            <div className="flex gap-2 mt-5">
               {[
-                { icon: FaGithub, url: "https://github.com", label: "GitHub" },
-                {
-                  icon: FaLinkedin,
-                  url: "https://linkedin.com",
-                  label: "LinkedIn",
-                },
-                {
-                  icon: FaTwitter,
-                  url: "https://twitter.com",
-                  label: "Twitter",
-                },
-              ].map(({ icon: Icon, url, label }) => (
+                { icon: FaGithub, url: "https://github.com/KaraniAbdellah" },
+                { icon: FaLinkedin, url: "https://www.linkedin.com/in/abdellah-karani-965928294/" },
+                { icon: FaTwitter, url: "https://x.com/karani66745" },
+              ].map(({ icon: Icon, url }, i) => (
                 <button
-                  key={label}
-                  aria-label={label}
+                  key={i}
                   onClick={() => window.open(url, "_blank")}
-                  className="p-2 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-neutral-900 transition-all duration-200"
+                  className="border-2 border-black p-2 hover:bg-black hover:text-white transition"
                 >
-                  <Icon size={18} />
+                  <Icon size={16} />
                 </button>
               ))}
             </div>
           </div>
+
+          {/* RIGHT SIDE MINI CARD */}
+          <div className="border-2 border-black p-6 shadow-[8px_8px_0_#000] flex-1">
+
+            <h3 className="font-black uppercase text-sm mb-3">
+              Built for research
+            </h3>
+
+            <p className="text-black/70 text-sm leading-relaxed">
+              Upload PDFs, ask questions, and get grounded answers with
+              citations. No hallucinations. No noise. Just structured knowledge.
+            </p>
+
+            <div className="mt-6 flex flex-wrap gap-2">
+              {["PDF Parsing", "RAG Pipeline", "Vector Search", "Citations"].map(
+                (tag) => (
+                  <span
+                    key={tag}
+                    className="border border-black px-3 py-1 text-xs font-bold uppercase"
+                  >
+                    {tag}
+                  </span>
+                )
+              )}
+            </div>
+          </div>
         </div>
 
-        <div className="border-t border-neutral-100 dark:border-neutral-800 my-10" />
+        {/* DIVIDER */}
+        <div className="my-10 border-t-2 border-black" />
 
-        {/* Bottom row: Copyright & Back to Top */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-neutral-500 dark:text-neutral-500 font-medium">
-            © {new Date().getFullYear()} Smart Notebook. All rights reserved.
+        {/* BOTTOM */}
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+
+          <p className="text-xs font-bold uppercase tracking-wider">
+            © {new Date().getFullYear()} Smart Notebook
           </p>
 
           <button
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            className="group inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-neutral-600 dark:text-neutral-400 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-full hover:border-neutral-900 dark:hover:border-neutral-600 hover:text-neutral-900 dark:hover:text-white transition-all duration-200 hover:-translate-y-0.5 shadow-sm"
+            className="border-2 border-black px-4 py-2 text-xs font-bold uppercase hover:bg-black hover:text-white transition flex items-center gap-2"
           >
             Back to top
-            <HiArrowUpRight
-              size={14}
-              className="transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-            />
+            <HiArrowUpRight size={14} />
           </button>
         </div>
       </div>

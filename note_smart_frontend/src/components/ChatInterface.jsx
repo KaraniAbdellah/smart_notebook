@@ -1,311 +1,334 @@
-import { useState, useRef, useEffect } from 'react';
-import { FiSend, FiZap, FiUser, FiAlertCircle } from 'react-icons/fi';
+import { useState, useRef, useEffect, useCallback } from "react";
+import {
+  FiSend,
+  FiZap,
+  FiUser,
+  FiAlertCircle,
+} from "react-icons/fi";
 
-const API_BASE = 'http://localhost:8000';
-const CHIPS = ['Summarize', 'Key points', 'To markdown', 'Translate'];
+const API_BASE = import.meta.env.VITE_API_URL;
 
-/**
- * ChatInterface
- * Props:
- *   collectionName: string | null — set after PDF is indexed
- */
-const ChatInterface = ({ collectionName }) => {
-    const [messages, setMessages] = useState([
-        { id: 1, text: "Hello! Upload a PDF on the left and ask me anything about it.", isBot: true }
+const CHIPS = [
+  "Summarize",
+  "Key points",
+  "To markdown",
+  "Translate",
+];
+
+const INIT_MESSAGES = [
+  {
+    id: 1,
+    text: "Upload a PDF and ask me anything.",
+    isBot: true,
+  },
+];
+
+export default function ChatInterface({ collectionName }) {
+  const [messages, setMessages] = useState(INIT_MESSAGES);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const chatEndRef = useRef(null);
+  const textareaRef = useRef(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
+  }, [messages]);
+
+  const addMessage = useCallback((text, isBot, isError = false) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        text,
+        isBot,
+        isError,
+      },
     ]);
-    const [input, setInput]     = useState('');
-    const [loading, setLoading] = useState(false);
-    const chatEndRef  = useRef(null);
-    const textareaRef = useRef(null);
+  }, []);
 
-    useEffect(() => {
-        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+  const handleSend = useCallback(
+    async (overrideText) => {
+      const question = (overrideText ?? input).trim();
 
-    const addMessage = (text, isBot, isError = false) => {
-        setMessages(prev => [...prev, { id: Date.now() + Math.random(), text, isBot, isError }]);
-    };
+      if (!question || loading) return;
 
-    const handleSend = async (overrideText) => {
-        const question = (overrideText ?? input).trim();
-        if (!question || loading) return;
+      if (!collectionName) {
+        addMessage(
+          "Please upload a PDF first.",
+          true,
+          true
+        );
+        return;
+      }
 
-        // Guard: no PDF indexed yet
-        if (!collectionName) {
-            addMessage('⚠️ Please upload a PDF first before asking questions.', true, true);
-            return;
+      addMessage(question, false);
+
+      setInput("");
+      setLoading(true);
+
+      try {
+        const res = await fetch(`${API_BASE}/query`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            question,
+            collection_name: collectionName,
+            top_k: 5,
+            rerank_top_k: 3,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || "Query failed");
         }
 
-        addMessage(question, false);
-        setInput('');
-        if (textareaRef.current) textareaRef.current.style.height = 'auto';
-        setLoading(true);
+        addMessage(data.answer, true);
+      } catch (err) {
+        addMessage(err.message, true, true);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [input, loading, collectionName, addMessage]
+  );
 
-        try {
-            const res = await fetch(`${API_BASE}/query`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    question,
-                    collection_name: collectionName,
-                    top_k: 5,
-                    rerank_top_k: 3,
-                }),
-            });
+  const handleKey = useCallback(
+    (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSend();
+      }
+    },
+    [handleSend]
+  );
 
-            const data = await res.json();
+  const autoResize = (el) => {
+    el.style.height = "auto";
+    el.style.height =
+      Math.min(el.scrollHeight, 140) + "px";
+  };
 
-            if (!res.ok) {
-                throw new Error(data.detail || 'Query failed');
-            }
+  return (
+    <div className="relative flex h-full flex-col overflow-hidden border-4 border-black bg-[#fffdf8] shadow-[10px_10px_0_#000]">
 
-            addMessage(data.answer, true);
+      {/* GRID */}
+      <div className="pointer-events-none absolute inset-0 opacity-40 [background-image:linear-gradient(to_right,#00000010_1px,transparent_1px),linear-gradient(to_bottom,#00000010_1px,transparent_1px)] [background-size:22px_22px]" />
 
-        } catch (err) {
-            addMessage(`Error: ${err.message}`, true, true);
-        } finally {
-            setLoading(false);
-        }
-    };
+      {/* DOTS */}
+      <div className="pointer-events-none absolute inset-0 opacity-20 [background-image:radial-gradient(#000_1px,transparent_1px)] [background-size:18px_18px]" />
 
-    const handleKey = (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
-    };
+      {/* HEADER */}
+      <div className="relative z-10 flex items-center border-b-4 border-black bg-[#ff5e36] px-6 py-5">
 
-    const autoResize = (el) => {
-        el.style.height = 'auto';
-        el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-    };
-
-    return (
-        <div style={{
-            width: '100%', height: '100%',
-            background: '#0d0d0f',
-            display: 'flex', flexDirection: 'column',
-            fontFamily: "'DM Sans', sans-serif",
-        }}>
-            {/* Header */}
-            <div style={{
-                padding: '28px 36px 22px',
-                borderBottom: '1px solid rgba(255,255,255,0.06)',
-                display: 'flex', alignItems: 'center', gap: 12,
-            }}>
-                <div style={{
-                    width: 36, height: 36, borderRadius: 10,
-                    background: 'rgba(94,130,255,0.12)',
-                    border: '1px solid rgba(94,130,255,0.2)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                    <FiZap size={16} color="#5e82ff" />
-                </div>
-                <div>
-                    <p style={{ fontSize: 15, fontWeight: 500, color: '#e8e5e0', lineHeight: 1.2 }}>AI Assistant</p>
-                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>
-                        {collectionName ? `📄 ${collectionName}` : 'NoteLLM'}
-                    </p>
-                </div>
-                <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{
-                        width: 7, height: 7, borderRadius: '50%',
-                        background: collectionName ? '#34c759' : '#ff9f0a',
-                        boxShadow: collectionName
-                            ? '0 0 8px rgba(52,199,89,0.5)'
-                            : '0 0 8px rgba(255,159,10,0.5)',
-                    }} />
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.3)' }}>
-                        {collectionName ? 'ready' : 'waiting for PDF'}
-                    </span>
-                </div>
-            </div>
-
-            {/* Messages */}
-            <div style={{
-                flex: 1, overflowY: 'auto',
-                padding: '28px 36px',
-                display: 'flex', flexDirection: 'column', gap: 20,
-                scrollbarWidth: 'thin',
-                scrollbarColor: 'rgba(255,255,255,0.08) transparent',
-            }}>
-                {messages.map((msg) => (
-                    <div key={msg.id} style={{
-                        display: 'flex', alignItems: 'flex-start', gap: 12,
-                        flexDirection: msg.isBot ? 'row' : 'row-reverse',
-                    }}>
-                        {/* Avatar */}
-                        <div style={{
-                            width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: msg.isBot ? 'rgba(94,130,255,0.12)' : 'rgba(255,255,255,0.06)',
-                            border: `1px solid ${msg.isBot ? 'rgba(94,130,255,0.2)' : 'rgba(255,255,255,0.08)'}`,
-                        }}>
-                            {msg.isBot
-                                ? (msg.isError
-                                    ? <FiAlertCircle size={14} color="#ff453a" />
-                                    : <FiZap size={14} color="#5e82ff" />)
-                                : <FiUser size={14} color="rgba(255,255,255,0.5)" />
-                            }
-                        </div>
-
-                        {/* Bubble */}
-                        <div style={{
-                            maxWidth: '72%',
-                            padding: '11px 15px',
-                            borderRadius: msg.isBot ? '4px 14px 14px 14px' : '14px 4px 14px 14px',
-                            fontSize: 14, lineHeight: 1.65,
-                            background: msg.isError
-                                ? 'rgba(255,69,58,0.08)'
-                                : msg.isBot
-                                    ? 'rgba(255,255,255,0.04)'
-                                    : 'rgba(94,130,255,0.15)',
-                            border: `1px solid ${msg.isError
-                                ? 'rgba(255,69,58,0.2)'
-                                : msg.isBot
-                                    ? 'rgba(255,255,255,0.07)'
-                                    : 'rgba(94,130,255,0.25)'}`,
-                            color: msg.isError ? '#ff453a' : msg.isBot ? '#c8c5c0' : '#d0d8ff',
-                            whiteSpace: 'pre-wrap',
-                        }}>
-                            {msg.text}
-                        </div>
-                    </div>
-                ))}
-
-                {/* Typing indicator */}
-                {loading && (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                        <div style={{
-                            width: 32, height: 32, borderRadius: 10,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: 'rgba(94,130,255,0.12)',
-                            border: '1px solid rgba(94,130,255,0.2)',
-                        }}>
-                            <FiZap size={14} color="#5e82ff" />
-                        </div>
-                        <div style={{
-                            padding: '11px 16px',
-                            borderRadius: '4px 14px 14px 14px',
-                            background: 'rgba(255,255,255,0.04)',
-                            border: '1px solid rgba(255,255,255,0.07)',
-                            display: 'flex', gap: 5, alignItems: 'center',
-                        }}>
-                            {[0, 1, 2].map(i => (
-                                <div key={i} style={{
-                                    width: 6, height: 6, borderRadius: '50%',
-                                    background: 'rgba(94,130,255,0.6)',
-                                    animation: `bounce 1.2s ease-in-out ${i * 0.2}s infinite`,
-                                }} />
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                <div ref={chatEndRef} />
-            </div>
-
-            {/* Quick chips */}
-            <div style={{ padding: '0 36px 12px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {CHIPS.map(chip => (
-                    <button
-                        key={chip}
-                        onClick={() => handleSend(chip)}
-                        disabled={loading}
-                        style={{
-                            padding: '5px 12px', borderRadius: 99,
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            background: 'rgba(255,255,255,0.03)',
-                            fontSize: 12, fontWeight: 500,
-                            color: 'rgba(255,255,255,0.4)',
-                            cursor: loading ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.15s',
-                            fontFamily: "'DM Sans', sans-serif",
-                            opacity: loading ? 0.4 : 1,
-                        }}
-                        onMouseEnter={e => {
-                            if (loading) return;
-                            e.currentTarget.style.borderColor = 'rgba(94,130,255,0.4)';
-                            e.currentTarget.style.color = '#5e82ff';
-                            e.currentTarget.style.background = 'rgba(94,130,255,0.07)';
-                        }}
-                        onMouseLeave={e => {
-                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-                            e.currentTarget.style.color = 'rgba(255,255,255,0.4)';
-                            e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
-                        }}
-                    >
-                        {chip}
-                    </button>
-                ))}
-            </div>
-
-            {/* Input */}
-            <div style={{
-                padding: '12px 36px 28px',
-                borderTop: '1px solid rgba(255,255,255,0.06)',
-                display: 'flex', gap: 10, alignItems: 'flex-end',
-            }}>
-                <textarea
-                    ref={textareaRef}
-                    rows={1}
-                    value={input}
-                    onChange={e => { setInput(e.target.value); autoResize(e.target); }}
-                    onKeyDown={handleKey}
-                    disabled={loading}
-                    placeholder={collectionName
-                        ? 'Ask anything about your document…'
-                        : 'Upload a PDF first to start chatting…'}
-                    style={{
-                        flex: 1, resize: 'none',
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.09)',
-                        borderRadius: 12,
-                        padding: '11px 16px',
-                        fontSize: 14, lineHeight: 1.5,
-                        color: '#e0ddd8',
-                        fontFamily: "'DM Sans', sans-serif",
-                        outline: 'none',
-                        maxHeight: 120, overflowY: 'auto',
-                        transition: 'border-color 0.15s',
-                        opacity: loading ? 0.6 : 1,
-                    }}
-                    onFocus={e => e.target.style.borderColor = 'rgba(94,130,255,0.4)'}
-                    onBlur={e => e.target.style.borderColor = 'rgba(255,255,255,0.09)'}
-                />
-                <button
-                    onClick={() => handleSend()}
-                    disabled={loading || !input.trim()}
-                    style={{
-                        width: 42, height: 42, flexShrink: 0,
-                        borderRadius: 12,
-                        border: '1px solid rgba(94,130,255,0.3)',
-                        background: 'rgba(94,130,255,0.15)',
-                        cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        transition: 'all 0.15s',
-                        opacity: loading || !input.trim() ? 0.4 : 1,
-                    }}
-                    onMouseEnter={e => {
-                        if (loading || !input.trim()) return;
-                        e.currentTarget.style.background = 'rgba(94,130,255,0.28)';
-                        e.currentTarget.style.borderColor = 'rgba(94,130,255,0.5)';
-                    }}
-                    onMouseLeave={e => {
-                        e.currentTarget.style.background = 'rgba(94,130,255,0.15)';
-                        e.currentTarget.style.borderColor = 'rgba(94,130,255,0.3)';
-                    }}
-                    aria-label="Send"
-                >
-                    <FiSend size={16} color="#5e82ff" />
-                </button>
-            </div>
-
-            <style>{`
-                @keyframes bounce {
-                    0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-                    40% { transform: scale(1); opacity: 1; }
-                }
-            `}</style>
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-4 border-black bg-[#fff] shadow-[4px_4px_0_#000]">
+          <FiZap className="text-[22px]" />
         </div>
-    );
-};
 
-export default ChatInterface;
+        <div className="ml-4">
+          <h2 className="text-lg font-black uppercase tracking-wide">
+            AI Assistant
+          </h2>
+
+          <p className="text-xs font-semibold text-black/70">
+            {collectionName
+              ? collectionName
+              : "Ask your documents"}
+          </p>
+        </div>
+
+        <div className="ml-auto rotate-2 rounded-xl border-4 border-black bg-white px-4 py-2 text-xs font-black uppercase shadow-[4px_4px_0_#000]">
+          <div className="flex items-center gap-2">
+            <div
+              className={`h-3 w-3 rounded-full border-2 border-black ${
+                collectionName
+                  ? "bg-green-500"
+                  : "bg-yellow-400"
+              }`}
+            />
+            {collectionName ? "READY" : "WAITING"}
+          </div>
+        </div>
+      </div>
+
+      {/* MESSAGES */}
+      <div className="relative z-10 flex-1 space-y-5 overflow-y-auto p-6">
+
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex gap-3 ${
+              msg.isBot
+                ? "justify-start"
+                : "justify-end"
+            }`}
+          >
+            {msg.isBot && (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-4 border-black bg-white shadow-[3px_3px_0_#000]">
+                {msg.isError ? (
+                  <FiAlertCircle className="text-red-500" />
+                ) : (
+                  <FiZap />
+                )}
+              </div>
+            )}
+
+            <div
+              className={`
+                max-w-[78%]
+                rounded-2xl
+                border-4
+                border-black
+                px-4
+                py-3
+                text-sm
+                font-medium
+                leading-relaxed
+                shadow-[5px_5px_0_#000]
+                transition-all
+              ${
+                msg.isBot
+                  ? msg.isError
+                    ? "bg-red-200"
+                    : "bg-white"
+                  : "bg-[#4d61ff] text-white"
+              }
+              `}
+            >
+              {msg.text}
+            </div>
+
+            {!msg.isBot && (
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-4 border-black bg-[#4d61ff] text-white shadow-[3px_3px_0_#000]">
+                <FiUser />
+              </div>
+            )}
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl border-4 border-black bg-white shadow-[3px_3px_0_#000]">
+              <FiZap />
+            </div>
+
+            <div className="flex items-center gap-2 rounded-2xl border-4 border-black bg-white px-4 py-3 shadow-[5px_5px_0_#000]">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-2.5 w-2.5 animate-bounce rounded-full bg-black"
+                  style={{
+                    animationDelay: `${i * 0.15}s`,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* CHIPS */}
+      <div className="relative z-10 flex flex-wrap gap-3 px-6 pb-4">
+
+        {CHIPS.map((chip) => (
+          <button
+            key={chip}
+            disabled={loading}
+            onClick={() => handleSend(chip)}
+            className="
+              rounded-xl
+              border-4
+              border-black
+              bg-[#00e0b0]
+              px-4
+              py-2
+              text-xs
+              font-black
+              uppercase
+              tracking-wide
+              shadow-[4px_4px_0_#000]
+              transition-all
+              hover:-translate-y-1
+              hover:translate-x-[-2px]
+              hover:shadow-[6px_6px_0_#000]
+              active:translate-y-1
+              active:shadow-[2px_2px_0_#000]
+            "
+          >
+            {chip}
+          </button>
+        ))}
+      </div>
+
+      {/* INPUT */}
+      <div className="relative z-10 border-t-4 border-black bg-[#fff8e8] p-5">
+
+        <div className="flex items-end gap-4">
+
+          <textarea
+            ref={textareaRef}
+            rows={1}
+            value={input}
+            disabled={loading}
+            onKeyDown={handleKey}
+            onChange={(e) => {
+              setInput(e.target.value);
+              autoResize(e.target);
+            }}
+            placeholder="Ask something..."
+            className="
+              min-h-[58px]
+              flex-1
+              resize-none
+              rounded-2xl
+              border-4
+              border-black
+              bg-white
+              px-4
+              py-3
+              text-sm
+              font-medium
+              outline-none
+              shadow-[5px_5px_0_#000]
+              placeholder:text-black/40
+            "
+          />
+
+          <button
+            disabled={!input.trim() || loading}
+            onClick={() => handleSend()}
+            className="
+              flex
+              h-14
+              w-14
+              items-center
+              justify-center
+              rounded-2xl
+              border-4
+              border-black
+              bg-[#ff3e00]
+              text-white
+              shadow-[5px_5px_0_#000]
+              transition-all
+              hover:-translate-y-1
+              hover:shadow-[7px_7px_0_#000]
+              active:translate-y-1
+              active:shadow-[2px_2px_0_#000]
+              disabled:opacity-40
+            "
+          >
+            <FiSend className="text-lg" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
